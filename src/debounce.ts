@@ -1,3 +1,5 @@
+import { BaseTimingWindow } from './base-timing-window'
+
 export type DebounceEdge    = 'leading' | 'trailing'
 export type DebounceSequence = 'concurrent' | 'serial'
 
@@ -53,81 +55,33 @@ export function debounce<T extends (...args: readonly any[]) => any>( // eslint-
   }
 }
 
-class DebounceWindow<R> {
+class DebounceWindow<R> extends BaseTimingWindow<R> {
   #edge: DebounceEdge
-  #delay: number
-  #sequence: DebounceSequence
-  #onClose: () => void
-
-  #timedOut = false
-  #settled = false
-  #timeoutId: ReturnType<typeof setTimeout> | null = null
-  #deferred = Promise.withResolvers<R>()
-  #fired = false
   #func: (() => Promise<R> | R) | null = null
-
-
-  get promise(): Promise<R> {
-    return this.#deferred.promise
-  }
 
   constructor(opts: { edge: DebounceEdge, delay: number, sequence: DebounceSequence, onClose: () => void }) {
     const { edge, delay, sequence, onClose } = opts
+    super(delay, sequence, onClose)
     this.#edge = edge
-    this.#delay = delay
-    this.#sequence = sequence
-    this.#onClose = onClose
   }
 
   plan(func: () => Promise<R> | R): void {
     const firstCall = this.#func == null
-    this.bump()
     this.#func = func
+    this.setTimeout()
     if (firstCall && this.#edge === 'leading') {
-      void this.run()
+      void this.run(this.#func)
     }
   }
 
-  private bump(): void {
-    this.#clearTimeout()
-    this.#timeoutId = setTimeout(() => {
-      this.#timeoutId = null
-      this.#timedOut = true
-      if (this.#edge === 'trailing') {
-        void this.run()
-      }
-      this.#checkClose()
-    }, this.#delay)
-  }
-
-  private async run(): Promise<void> {
-    if (this.#fired) { return }
-    this.#fired = true
-    try {
-      this.#deferred.resolve(await this.#func!())
-    } catch (err) {
-      this.#deferred.reject(err)
-    } finally {
-      this.#settled = true
-      this.#checkClose()
+  protected override onTimeout(): void {
+    if (this.#edge === 'trailing') {
+      void this.run(this.#func!)
     }
   }
 
-  #clearTimeout(): void {       
-    if (this.#timeoutId != null) {
-      clearTimeout(this.#timeoutId)
-      this.#timeoutId = null
-    }
+  protected override onSettled(): void {
+    // nothing to do
   }
 
-  #checkClose(): void {
-    if (this.#timedOut && (this.#sequence === 'concurrent' || this.#settled)) {
-      this.#close()
-    }
-  }
-
-  #close(): void {
-    this.#clearTimeout()
-    this.#onClose()
-  }
 }

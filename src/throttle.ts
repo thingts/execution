@@ -1,3 +1,5 @@
+import { BaseTimingWindow } from './base-timing-window'
+
 export type ThrottleSequence = 'concurrent' | 'serial' | 'gap'
 
 /**
@@ -43,16 +45,7 @@ export function throttle<T extends (...args: readonly any[]) => any>( // eslint-
   }
 }
 
-class ThrottleWindow<R> {
-  #timedOut = false
-  #settled  = false
-  #deferred = Promise.withResolvers<R>()
-  #onClose: () => void
-  #sequence: 'serial' | 'concurrent' | 'gap'
-
-  get promise(): Promise<R> {
-    return this.#deferred.promise
-  }
+class ThrottleWindow<R> extends BaseTimingWindow<R> {
 
   constructor(opts: {
     func: (() => Promise<R> | R)
@@ -61,42 +54,21 @@ class ThrottleWindow<R> {
     onClose: () => void
   }) {
     const { func, delay, sequence, onClose } = opts
-    this.#onClose = onClose
-    this.#sequence = sequence
+    super(delay, sequence, onClose)
 
     // For 'gap', we don't start the timer until the function settles.
-    if (sequence !== 'gap') {
-      this.#setTimeout(delay)
-    }
+    if (sequence !== 'gap') { this.setTimeout() }
 
-    void this.#run(func, delay)
+    void this.run(func)
   }
 
-  async #run(func: () => Promise<R> | R, delay: number): Promise<void> {
-    try {
-      this.#deferred.resolve(await func())
-    } catch (err) {
-      this.#deferred.reject(err)
-    } finally {
-      this.#settled = true
-      if (this.#sequence === 'gap') {
-        this.#setTimeout(delay)
-      }
-      this.#checkClose()
-    }
+  protected override onTimeout(): void {
+    // nothing to do
   }
 
-  #setTimeout(delay: number): void {
-    setTimeout(() => {
-      this.#timedOut = true
-      this.#checkClose()
-    }, delay)
-  }
-
-
-  #checkClose(): void {
-    if (this.#timedOut && (this.#sequence === 'concurrent' || this.#settled)) {
-      this.#onClose()
+  protected override onSettled(): void {
+    if (this.sequence === 'gap') {
+      this.setTimeout()
     }
   }
 }
