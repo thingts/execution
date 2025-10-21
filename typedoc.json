@@ -1,0 +1,24 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "exclude": ["**/*.test.ts", "**/__tests__/**"],
+  "excludeInternal": true,
+  "excludeNotDocumented": true,
+  "excludeNotDocumentedKinds": ["Class", "Module"],
+  "excludePrivate": true,
+  "includeHierarchySummary": false,
+  "includeVersion": true,
+  "name": "@thingts/timing",
+  "navigationLinks": {
+    "github.com/thingts/timing": "https://github.com/thingts/timing"
+  },
+  "out": "docs",
+  "plugin": ["typedoc-github-theme"],
+  "readme": "typedoc/readme.md",
+  "theme": "typedoc-github-theme",
+  "tsconfig": "tsconfig.json",
+  "visibilityFilters": {
+    "protected": false,
+    "inherited": true
+  }
+}

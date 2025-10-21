@@ -1,0 +1,8 @@
+node_modules
+dist
+docs
+.DS_Store
+.eslintcache
+*.log*
+*.tsbuildinfo
+.envrc

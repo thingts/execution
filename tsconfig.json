@@ -1,0 +1,15 @@
+{
+  "include": ["*.ts", "src/**/*", "tests/**/*"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "$src": ["src/index.ts"]
+    },
+    "strict": true,
+    "strictNullChecks": true,
+    "target": "esnext"
+  }
+}

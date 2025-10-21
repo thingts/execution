@@ -1,0 +1,63 @@
+{
+  "name": "@thingts/timing",
+  "version": "1.0.6",
+  "description": "Async-friendly throttle and debounce utilities for modern TypeScript",
+  "keywords": [
+    "async",
+    "curry",
+    "debounce",
+    "delay",
+    "throttle",
+    "timing",
+    "typescript"
+  ],
+  "homepage": "https://github.com/thingts/timing#readme",
+  "bugs": {
+    "url": "https://github.com/thingts/timing/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thingts/timing.git"
+  },
+  "license": "MIT",
+  "author": "ronen barzel",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "docs": "typedoc",
+    "lint": "tsc --build --noEmit ; eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/node": "^24.5.2",
+    "eslint": "^9.36.0",
+    "knip": "^5.64.0",
+    "tsup": "^8.5.0",
+    "typedoc": "^0.28.13",
+    "typedoc-github-theme": "^0.3.1",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.1",
+    "vitest": "^3.2.4",
+    "watch-eslint": "^1.1.0"
+  }
+}
