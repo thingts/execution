@@ -11,7 +11,7 @@ describe('throttle()', () => {
     const p = thr(5)
     expect(fn).toHaveBeenCalledOnce()
 
-    await expect(p).resolves.toBe(5)
+    await expect(p).resolves.toEqual(5)
   })
 
   it('returns the SAME promise to all callers in the window', async () => {
@@ -20,8 +20,8 @@ describe('throttle()', () => {
     const promises = await seqPromises(thr, [0, 5, 10])
 
     const [p1, p2, p3] = promises
-    expect(p1).toBe(p2)
-    expect(p2).toBe(p3)
+    expect(p1 === p2).toBe(true)
+    expect(p2 === p3).toBe(true)
 
     await expect(Promise.all(promises)).resolves.toEqual([0, 0, 0])
     expect(fn).toHaveBeenCalledTimes(1)
@@ -34,8 +34,8 @@ describe('throttle()', () => {
     const promises = await seqPromises(thr, [0, 20, 40])
 
     const [p1, p2, p3] = promises
-    expect(p1).toBe(p2)
-    expect(p2).not.toBe(p3)
+    expect(p1 === p2).toBe(true)
+    expect(p2 === p3).toBe(false)
 
     await expect(Promise.all(promises)).resolves.toEqual([0, 0, 40])
     expect(fn).toHaveBeenCalledTimes(2)
@@ -51,7 +51,7 @@ describe('throttle()', () => {
 
     await expect(p1).rejects.toThrow('boom')
     await expect(p2).rejects.toThrow('boom')
-    expect(calls).toBe(1)
+    expect(calls).toEqual(1)
   })
 
   it('rejects all callers if fn rejects asynchronously', async () => {

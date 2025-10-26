@@ -2,7 +2,6 @@ import type { AnyFunction, PromisifiedFunction } from './types'
 import type { DelaySpec } from './types'
 import { getOrInsertComputed } from './map'
 import { resolveDelay } from './types'
-
 import { BaseTimingWindow } from './base-timing-window'
 
 /**
@@ -51,7 +50,7 @@ export function throttle(delay: DelaySpec, options?: { sequence?: ThrottleSequen
     const { sequence = 'serial' } = options ?? {}
     const fallback = Symbol()
 
-    return async function (this: unknown, ...args: A): Promise<R> {
+    return function (this: unknown, ...args: A): Promise<R> {
       const key = this ?? fallback
       const win = getOrInsertComputed(windowMap, key, () => new ThrottleWindow<R>({
         func:    () => fn(...args), // eslint-disable-line @typescript-eslint/no-unsafe-return
@@ -59,8 +58,7 @@ export function throttle(delay: DelaySpec, options?: { sequence?: ThrottleSequen
         sequence,
         onClose: () => windowMap.delete(key),
       }))
-
-      return win.promise as Promise<R>
+      return win.promise
     }
   }
 }
