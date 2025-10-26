@@ -1,4 +1,4 @@
-export const sleep = (ms: number): Promise<void> => new Promise<void>(r => setTimeout(r, ms))
+import { sleep } from './sleep'
 
 /*
  * Calls the throttled/debounced function `thr` at the specified times

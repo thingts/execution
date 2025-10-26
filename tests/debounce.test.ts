@@ -1,6 +1,7 @@
 import { debounce } from '$src'
 import { describe, it, expect, vi } from 'vitest'
-import { seqResults, sleep } from './helpers'
+import { seqResults } from './helpers/seq'
+import { sleep } from './helpers/sleep'
 
 describe('debounce()', () => {
   it('delays execution and resolves to the result', async () => {

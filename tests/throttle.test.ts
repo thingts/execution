@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { seqPromises, seqResults, sleep } from './helpers'
+import { seqPromises, seqResults } from './helpers/seq'
+import { sleep } from './helpers/sleep'
 import { throttle } from '$src'
 
 describe('throttle()', () => {
