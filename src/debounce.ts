@@ -1,4 +1,23 @@
+import type { AnyFunction, PromisifiedFunction } from './types'
+import type { DelaySpec } from './types'
 import { BaseTimingWindow } from './base-timing-window'
+import { getOrInsertComputed } from './map'
+import { resolveDelay } from './types'
+
+/**
+ * The result of {@link debounce}() when used in functional form.
+ *
+ * It's a factory that takes a function and returns a debounced wrapper of it.
+ *
+ * @example
+ *
+ *   ```
+ *   const d: Debouncer = debounce(200)
+ *   const onClick = d(saveToDb)
+ *   ```
+ */
+export type Debouncer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T>
+
 
 export type DebounceEdge    = 'leading' | 'trailing'
 export type DebounceSequence = 'concurrent' | 'serial'
@@ -7,7 +26,6 @@ export type DebounceOptions = {
   edge?:     DebounceEdge      // default: 'trailing'
   sequence?: DebounceSequence // default: 'serial'
 }
-
 
 /**
  * Returns a debounced version of the given function that delays execution
@@ -35,29 +53,34 @@ export type DebounceOptions = {
  *     calls in the meantime return the same promise
  */
 
-export function debounce<T extends (...args: readonly any[]) => any>( // eslint-disable-line @typescript-eslint/no-explicit-any
-  fn:    T,
-  delay: number,
-  opts?: DebounceOptions,
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
-  const { edge = 'trailing', sequence = 'serial'} = opts ?? {}
+export function debounce(delay: DelaySpec, opts?: DebounceOptions): Debouncer {
+  const windowMap = new WeakMap<object, DebounceWindow<any>>() // eslint-disable-line @typescript-eslint/no-explicit-any
 
-  type R = Awaited<ReturnType<T>>
-  type A = Parameters<T>
+  return function <F extends AnyFunction>(fn: F, _context?: ClassMethodDecoratorContext): PromisifiedFunction<F> {
+    type R = Awaited<ReturnType<F>>
+    type A = Parameters<F>
 
-  let win: DebounceWindow<R> | null = null
+    const { edge = 'trailing', sequence = 'serial'} = opts ?? {}
+    const fallback = Symbol()
 
-  return (...args: A): Promise<R> => {
-
-    win ??= new DebounceWindow<R>({ edge, delay, sequence, onClose: () => { win = null } })
-    win.plan(() => fn(...args)) // eslint-disable-line @typescript-eslint/no-unsafe-return
-    return win.promise
+    return async function (this: unknown, ...args: A): Promise<R> {
+      const key = this ?? fallback
+      const win = getOrInsertComputed(windowMap, key, () => new DebounceWindow<R>({
+        delay:   resolveDelay(this, delay),
+        edge,
+        sequence,
+        onClose: () => windowMap.delete(key),
+      })) as DebounceWindow<R>
+      win.plan(() => fn.apply(this, args)) // eslint-disable-line @typescript-eslint/no-unsafe-return
+      return win.promise
+    }
   }
 }
 
+
 class DebounceWindow<R> extends BaseTimingWindow<R> {
   #edge: DebounceEdge
-  #func: (() => Promise<R> | R) | null = null
+  #func: AnyFunction<R | Promise<R>> | null = null
 
   constructor(opts: { edge: DebounceEdge, delay: number, sequence: DebounceSequence, onClose: () => void }) {
     const { edge, delay, sequence, onClose } = opts

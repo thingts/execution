@@ -1,4 +1,23 @@
+import type { AnyFunction, PromisifiedFunction } from './types'
+import type { DelaySpec } from './types'
+import { getOrInsertComputed } from './map'
+import { resolveDelay } from './types'
+
 import { BaseTimingWindow } from './base-timing-window'
+
+/**
+ * The result of {@link throttle}() when used in functional form.
+ *
+ * It's a factory that takes a function and returns a throttled wrapper of it.
+ *
+ * @example
+ *
+ *   ```
+ *   const th: Throttler = throttle(100)
+ *   const onScroll = th(updateScroll)
+ *   ```
+ */
+export type Throttler = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T>
 
 export type ThrottleSequence = 'concurrent' | 'serial' | 'gap'
 
@@ -22,26 +41,27 @@ export type ThrottleSequence = 'concurrent' | 'serial' | 'gap'
  *   ms before starting another.
  */
 
-export function throttle<T extends (...args: readonly any[]) => any>( // eslint-disable-line @typescript-eslint/no-explicit-any
-  fn: T,
-  delay: number,
-  options?: { sequence?: ThrottleSequence }
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
-  type R = Awaited<ReturnType<T>>
-  type A = Parameters<T>
+export function throttle(delay: DelaySpec, options?: { sequence?: ThrottleSequence }): Throttler {
+  const windowMap = new WeakMap<object, ThrottleWindow<any>>() // eslint-disable-line @typescript-eslint/no-explicit-any
 
-  const { sequence = 'serial' } = options ?? {}
-  let win: ThrottleWindow<R> | null = null
+  return function <F extends AnyFunction>(fn: F, _context?: ClassMethodDecoratorContext): PromisifiedFunction<F> {
+    type R = Awaited<ReturnType<F>>
+    type A = Parameters<F>
 
-  return (...args: A): Promise<R> => {
-    win ??= new ThrottleWindow<R>({
-      func: () => fn(...args), // eslint-disable-line @typescript-eslint/no-unsafe-return
-      delay,
-      sequence,
-      onClose: () => { win = null }
-    })
+    const { sequence = 'serial' } = options ?? {}
+    const fallback = Symbol()
 
-    return win.promise
+    return async function (this: unknown, ...args: A): Promise<R> {
+      const key = this ?? fallback
+      const win = getOrInsertComputed(windowMap, key, () => new ThrottleWindow<R>({
+        func:    () => fn(...args), // eslint-disable-line @typescript-eslint/no-unsafe-return
+        delay:   resolveDelay(this, delay),
+        sequence,
+        onClose: () => windowMap.delete(key),
+      }))
+
+      return win.promise as Promise<R>
+    }
   }
 }
 

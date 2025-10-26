@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { seqPromises, seqResults } from './helpers/seq'
 import { sleep } from './helpers/sleep'
 import { throttle } from '$src'
@@ -7,7 +7,7 @@ describe('throttle()', () => {
 
   it('fires immediately and returns the result', async () => {
     const fn = vi.fn((x: number) => x)
-    const thr = throttle(fn, 20)
+    const thr = throttle(20)(fn)
     const p = thr(5)
     expect(fn).toHaveBeenCalledOnce()
 
@@ -16,7 +16,7 @@ describe('throttle()', () => {
 
   it('returns the SAME promise to all callers in the window', async () => {
     const fn = vi.fn((x: number) => x)
-    const thr = throttle(fn, 20)
+    const thr = throttle(20)(fn)
     const promises = await seqPromises(thr, [0, 5, 10])
 
     const [p1, p2, p3] = promises
@@ -30,7 +30,7 @@ describe('throttle()', () => {
 
   it('returns new promise after window closed', async () => {
     const fn = vi.fn((x: number) => x)
-    const thr = throttle(fn, 30)
+    const thr = throttle(30)(fn)
     const promises = await seqPromises(thr, [0, 20, 40])
 
     const [p1, p2, p3] = promises
@@ -44,7 +44,7 @@ describe('throttle()', () => {
   it('rejects all callers if fn throws', async () => {
     let calls = 0
     const err = (): void => { calls++; throw new Error('boom') }
-    const thr = throttle(err, 10)
+    const thr = throttle(10)(err)
 
     const p1 = thr()
     const p2 = thr()
@@ -57,7 +57,7 @@ describe('throttle()', () => {
   it('rejects all callers if fn rejects asynchronously', async () => {
     let calls = 0
     const err = async (): Promise<void> => { calls++; await sleep(10); throw new Error('nope') }
-    const thr = throttle(err, 10)
+    const thr = throttle(10)(err)
 
     const p1 = thr()
     const p2 = thr()
@@ -67,23 +67,82 @@ describe('throttle()', () => {
     expect(calls).toBe(1)
   })
 
-  describe('async functions', () => {
+  it('works as a method decorator', async () => {
 
-    const timestamps: number[] = []
+    class Example {
+      @throttle(30)
+      run(x: number): Promise<number> {
+        return Promise.resolve(x)
+      }
+    }
+
+    const ex = new Example()
+    const results = await seqResults((x: number) => ex.run(x), [0, 20, 40])
+    expect(results).toEqual([0, 0, 40])
+  })
+
+  describe('decorator form', () => {
+    it('works with constant delay', async () => {
+      class Example {
+        @throttle(25)
+        run(x: number): Promise<number> {
+          return Promise.resolve(x)
+        }
+      }
+
+      const ex = new Example()
+      const results = await seqResults((x: number) => ex.run(x), [0, 10, 30])
+      expect(results).toEqual([0, 0, 30])
+    })
+
+    it('works with instance-specific delay', async () => {
+      class Example {
+        constructor(public delay: number) {}
+        @throttle(function (this: Example) { return this.delay })
+        run(x: number): Promise<number> {
+          return Promise.resolve(x)
+        }
+      }
+
+      const ex = new Example(25)
+      const results = await seqResults((x: number) => ex.run(x), [0, 10, 30])
+      expect(results).toEqual([0, 0, 30])
+    })
+
+    it('isolates instance-specific delays', async () => {
+      class Example {
+        constructor(public delay: number) {}
+
+        @throttle((self: Example) => self.delay)
+        run(x: number): Promise<number> {
+          return Promise.resolve(x)
+        }
+      }
+      const ex05 = new Example(5)
+      const ex25 = new Example(25)
+
+      // run throttled methods in parallel
+      const [promises05, promises25] = await Promise.all([seqPromises((x: number) => ex05.run(x), [0, 10, 30]), seqPromises((x: number) => ex25.run(x), [0, 10, 30])])
+
+      const results05 = await Promise.all(promises05)
+      const results25 = await Promise.all(promises25)
+
+      // each should have debounced correctly independently
+      expect(results05).toEqual([0, 10, 30]) 
+      expect(results25).toEqual([0, 0, 30])
+    })
+  })
+
+  describe('long-running functions', () => {
 
     async function fn(arg: number): Promise<number> {
-      timestamps.push(performance.now())
       await sleep(25)
       return arg
     }
 
-    beforeEach(() => {
-      timestamps.length = 0
-    })
-
     describe('sequence: serial', () => {
       it('waits for previous run to finish before starting the next', async () => {
-        const thr = throttle(fn, 10, { sequence: 'serial' })
+        const thr = throttle(10, { sequence: 'serial' })(fn)
 
         const results = await seqResults(thr, [
           0,  // first call:  will resolve at 25
@@ -98,7 +157,7 @@ describe('throttle()', () => {
     describe('sequence: concurrent', () => {
       it('runs overlapping executions when previous run is still in progress', async () => {
 
-        const thr = throttle(fn, 10, { sequence: 'concurrent' })
+        const thr = throttle(10, { sequence: 'concurrent' })(fn)
         const results = await seqResults(thr, [
           0, // first call: will resolve at 25
           5, // second call -- still in window of first
@@ -113,7 +172,7 @@ describe('throttle()', () => {
 
     describe('sequence: gap', () => {
       it('coalesces calls during the enforced gap period with the previous promise', async () => {
-        const thr = throttle(fn, 20, { sequence: 'gap' })
+        const thr = throttle(20, { sequence: 'gap' })(fn)
 
         const results = await seqResults(thr, [
           0, // first call: will resolve at 25; gap will end at 45
@@ -127,5 +186,6 @@ describe('throttle()', () => {
       })
     })
   })
+
   
 })
