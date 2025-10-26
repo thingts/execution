@@ -17,6 +17,9 @@
   "readme": "typedoc/readme.md",
   "theme": "typedoc-github-theme",
   "tsconfig": "tsconfig.json",
+  "validation": {
+    "notExported": false
+  },
   "visibilityFilters": {
     "protected": false,
     "inherited": true
