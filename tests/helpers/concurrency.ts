@@ -31,7 +31,7 @@ export function makeRecorder() { // eslint-disable-line @typescript-eslint/expli
   return { enter, exit, maxConcurrency, results }
 }
 
-export type Recorder = ReturnType<typeof makeRecorder>
+type Recorder = ReturnType<typeof makeRecorder>
 
 export function makeFunc(
   rec: Recorder,
