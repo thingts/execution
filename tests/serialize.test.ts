@@ -56,31 +56,13 @@ describe('serialize', () => {
   })
 
   describe('decorator form', () => {
-    it('serializes globally by default', async () => {
+
+    it('serializes per instance', async () => {
 
       class Example {
         constructor(readonly label: string) {}
 
         @serialize()
-        async run(x: string): Promise<void> { await makeFunc(rec, this.label, 10)(x) }
-      }
-
-      const a = new Example('A')
-      const b = new Example('B')
-      await Promise.all([a.run('1'), a.run('2'), b.run('3'), b.run('4')])
-
-      expect(rec.results).toEqual(['A:1', 'A:2', 'B:3', 'B:4'])
-      expect(rec.maxConcurrency('A')).toBe(1)
-      expect(rec.maxConcurrency('B')).toBe(1)
-      expect(rec.maxConcurrency()).toBe(1)
-    })
-
-    it('serializes per instance when perInstance:true', async () => {
-
-      class Example {
-        constructor(readonly label: string) {}
-
-        @serialize({ perInstance: true })
         async run(x: string): Promise<void> { await makeFunc(rec, this.label, 10)(x) }
       }
 
@@ -94,16 +76,16 @@ describe('serialize', () => {
       expect(rec.maxConcurrency()).toBe(2)
     })
 
-    it('supports perInstance + group subgrouping', async () => {
+    it('supports group subgrouping per instance', async () => {
 
       class Example {
-        @serialize({ perInstance: true, group: 'alpha' })
+        @serialize({ group: 'alpha' })
         async alphaOne(x: string): Promise<void> { await makeFunc(rec, 'alpha', 10)(x) }
 
-        @serialize({ perInstance: true, group: 'alpha' })
+        @serialize({ group: 'alpha' })
         async alphaTwo(x: string): Promise<void> { await makeFunc(rec, 'alpha', 10)(x) }
 
-        @serialize({ perInstance: true, group: 'beta' })
+        @serialize({ group: 'beta' })
         async beta(x: string): Promise<void> { await makeFunc(rec, 'beta', 15)(x) }
       }
 
@@ -135,41 +117,6 @@ describe('serialize', () => {
       expect(rec.results).toEqual(['fast:B', 'slow:A'])
     })
 
-    it('shared group across instances (without perInstance) serializes globally', async () => {
-
-      class Example {
-        constructor(readonly label: string) {}
-        @serialize({ group: 'shared' })
-        async act(x: string): Promise<void> {
-          await makeFunc(rec, this.label, 10)(x)
-        }
-      }
-
-      const a = new Example('A')
-      const b = new Example('B')
-      await Promise.all([a.act('1'), b.act('2'), a.act('3')])
-
-      expect(rec.maxConcurrency()).toBe(1)
-      expect(rec.results).toEqual(['A:1', 'B:2', 'A:3'])
-    })
-
-    it('shared group key works between functional and decorator forms', async () => {
-      const group = Symbol('shared')
-
-      const f = serialize({ group })(makeFunc(rec, 'func', 10))
-
-      class Example {
-        @serialize({ group })
-        async run(x: string): Promise<void> { await makeFunc(rec, 'method', 10)(x) }
-      }
-
-      const ex = new Example()
-      await Promise.all([f('A'), ex.run('B'), f('C')])
-
-      // everything in shared group should serialize
-      expect(rec.maxConcurrency()).toBe(1)
-      expect(rec.results).toEqual(['func:A', 'method:B', 'func:C'])
-    })
   })
 })
 
