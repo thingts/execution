@@ -1,6 +1,6 @@
 # @thingts/execution
 
-Async-friendly **throttle**, **debounce**, and **serialize** function wrappers for modern TypeScript.
+Async-friendly **debounce**, **throttle**, and **serialize** function wrappers for modern TypeScript.
 
 Both functions handle synchronous and asynchronous code transparently, always
 return a `Promise`, and guarantee that **all coalesced calls share the same
