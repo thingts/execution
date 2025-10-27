@@ -8,9 +8,9 @@
   "excludePrivate": true,
   "includeHierarchySummary": false,
   "includeVersion": true,
-  "name": "@thingts/timing",
+  "name": "@thingts/execution",
   "navigationLinks": {
-    "github.com/thingts/timing": "https://github.com/thingts/timing"
+    "github.com/thingts/execution": "https://github.com/thingts/execution"
   },
   "out": "docs",
   "plugin": ["typedoc-github-theme"],

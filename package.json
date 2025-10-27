@@ -1,7 +1,7 @@
 {
-  "name": "@thingts/timing",
+  "name": "@thingts/execution",
   "version": "1.0.6",
-  "description": "Async-friendly throttle and debounce utilities for modern TypeScript",
+  "description": "Async-friendly debounce, throttle, and serialize function wrappers for modern TypeScript",
   "keywords": [
     "async",
     "curry",
@@ -11,13 +11,13 @@
     "timing",
     "typescript"
   ],
-  "homepage": "https://github.com/thingts/timing#readme",
+  "homepage": "https://github.com/thingts/execution#readme",
   "bugs": {
-    "url": "https://github.com/thingts/timing/issues"
+    "url": "https://github.com/thingts/execution/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thingts/timing.git"
+    "url": "git+https://github.com/thingts/execution.git"
   },
   "license": "MIT",
   "author": "ronen barzel",

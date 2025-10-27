@@ -1,6 +1,6 @@
-# @thingts/timing
+# @thingts/execution
 
-Async-friendly **throttle** and **debounce** utilities for modern TypeScript.
+Async-friendly **throttle**, **debounce**, and **serialize** function wrappers for modern TypeScript.
 
 Both functions handle synchronous and asynchronous code transparently, always
 return a `Promise`, and guarantee that **all coalesced calls share the same
@@ -23,7 +23,7 @@ function has executed and settled and the timing requirements have been met.
 ## 📦 Installation
 
 ```bash
-npm install @thingts/timing
+npm install @thingts/execution
 ```
 
 ---
@@ -38,7 +38,7 @@ Each call returns a **Promise** that resolves after the corresponding throttled 
 All calls that start within the same timing period share the same Promise.
 
 ```ts
-import { throttle } from '@thingts/timing'
+import { throttle } from '@thingts/execution'
 
 const throttledFetch = throttle(async (url: string) => {
   const res = await fetch(url)
@@ -84,7 +84,7 @@ Each call returns a **Promise** that resolves after the coalesced execution has 
 All calls within the same burst share the same Promise and result.
 
 ```ts
-import { debounce } from '@thingts/timing'
+import { debounce } from '@thingts/execution'
 
 const debouncedSave = debounce(async (doc: Document) => {
   await saveToServer(doc)
@@ -128,7 +128,7 @@ This option only matters when the wrapped function can take longer to settle tha
 Even synchronous functions are wrapped to return a Promise:
 
 ```ts
-import { throttle } from '@thingts/timing'
+import { throttle } from '@thingts/execution'
 
 const throttled = throttle((x: number) => x * 2, 200)
 
@@ -172,7 +172,7 @@ function debounce<T extends (...args: any[]) => any>(
 | `lodash.debounce` | ❌ | ❌ | ❌ | ✅ |
 | `debounce-promise` | ✅ | ❌ (only last call’s promise resolves) | ❌ | ⚠️ partial |
 | `p-throttle` | ✅ | ⚠️ (queues rather than coalesces) | ⚠️ partial | ❌ |
-| **`@thingts/timing`** | ✅ | ✅ all coalesced calls share one Promise | ✅ via `sequence` | ✅ |
+| **`@thingts/execution`** | ✅ | ✅ all coalesced calls share one Promise | ✅ via `sequence` | ✅ |
 
 ---
 
