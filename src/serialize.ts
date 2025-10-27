@@ -9,7 +9,9 @@ import { getOrInsertComputed } from './map'
 type SerialQueue = <T>(fn: () => T | Promise<T>) => Promise<T>
 
 /**
- * Allowed types for serialization groups passed to {@link SerializeOptions.group}
+ * The value of the {@link SerializeOptions.group} option of {@link serialize}().
+ *
+ * Any non-nullish value or object may be used as a group key.
  */
 export type SerializeGroupKey = string | number | boolean | symbol | bigint | object
 
@@ -21,6 +23,8 @@ export type SerializeOptions = {
    * Identifier for a serialization group (shared queue) to use.  If
    * omitted, each function or method that {@link serialize}() is applied
    * to is serialized only with itself.
+   *
+   * See {@link SerializeGroupKey}
    */
   group?: SerializeGroupKey
 }
@@ -28,7 +32,12 @@ export type SerializeOptions = {
 /**
  * The result of {@link serialize}() when used in functional form.
  *
- * It's a factory that takes a function and returns a serialized wrapper of it.
+ * It's a factory that takes a function and returns a serialized wrapper of
+ * it.  If the serializer was created without specifying a {@link
+ * SerializeOptions.group} option, multiple functions created by that
+ * serializer will be serialized independently.  If a group was specified,
+ * multiple functions created by that serializer will share the same
+ * serialization queue.
  *
  * @example
  *
@@ -47,10 +56,10 @@ export type Serializer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T
  * An optional `group` parameter allows multiple functions to share the
  * same serialization queue, keyed by an arbitrary value.
  *
- * When used as a method decorator, the queues are scoped to the object
- * instance, so that calls to methods on the same instance are serialized,
- * but calls on different object instances can run concurrently.
- *
+ * When used as a method decorator, the queues (both individual and group)
+ * are scoped to the object instance, so that calls to methods on the same
+ * instance are serialized, but calls on different object instances can run
+ * concurrently.
  *
  * @example
  *
@@ -71,7 +80,13 @@ export type Serializer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T
  * // Decorator form (ECMAScript / TypeScript 5.2+)
  * class Player {
  *   @serialize()
+ *   async load(url: string) { ... }
+ *
+ *   @serialize({ group: 'controls' })
  *   async play() { ... }
+ *
+ *   @serialize({ group: 'controls' })
+ *   async pause() { ... }
  * }
  * ```
  */

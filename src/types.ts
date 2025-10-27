@@ -14,5 +14,5 @@ export type PromisifiedFunction<T extends AnyFunction> = (...args: Parameters<T>
 export type DelaySpec = number | ((self: any) => number) // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export function resolveDelay(thisArg: unknown, delay: DelaySpec): number {
-  return typeof delay === 'function' ? delay.apply(thisArg, [thisArg]) : delay
+  return typeof delay === 'function' ? delay(thisArg) : delay
 }

@@ -98,7 +98,7 @@ describe('throttle()', () => {
     it('works with instance-specific delay', async () => {
       class Example {
         constructor(public delay: number) {}
-        @throttle(function (this: Example) { return this.delay })
+        @throttle((self: Example) =>  self.delay)
         run(x: number): Promise<number> {
           return Promise.resolve(x)
         }

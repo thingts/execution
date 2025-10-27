@@ -7,7 +7,9 @@ import { resolveDelay } from './types'
 /**
  * The result of {@link debounce}() when used in functional form.
  *
- * It's a factory that takes a function and returns a debounced wrapper of it.
+ * It's a factory that takes a function and returns a debounced wrapper of
+ * it.  The same factory may be applied to multiple functions, each of
+ * which will be debounced independently.
  *
  * @example
  *
@@ -19,41 +21,98 @@ import { resolveDelay } from './types'
 export type Debouncer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T>
 
 
+/**
+ * The value of the {@link DebounceOptions.edge} option of {@link debounce}().
+ *
+ * Specifies when the debounced function is invoked
+ *   - `'leading'` - at the beginning of the debounce window
+ *   - `'trailing'` - at the end (timeout) of the debounce window (default)
+ *
+ */
 export type DebounceEdge    = 'leading' | 'trailing'
+
+/**
+ * The value of the {@link DebounceOptions.sequence} option of {@link debounce}().
+ *
+ * Specifies how debouncing behaves while the debounced function is still
+ * executing
+ *  - `'concurrent'` - the debounce window closes when the delay expires,
+ *  and any calls after that start a new window and a new function call,
+ *  concurrently with the previous one.
+ * - `'serial'` - the debounce window remains open until the function
+ *   resolves; any calls in the meantime return the same Promise.
+ */
 export type DebounceSequence = 'concurrent' | 'serial'
 
+/**
+ * Options for {@link debounce}().
+ */
 export type DebounceOptions = {
+  /** Specifies when to invoke the debounced function.  See {@link DebounceEdge } */
   edge?:     DebounceEdge      // default: 'trailing'
+
+  /** Specifies how to handle calls while the function is still executing.  See {@link DebounceSequence} */
   sequence?: DebounceSequence // default: 'serial'
 }
 
 /**
- * Returns a debounced version of the given function that delays execution
- * until after `delay` milliseconds have passed since the last call.  The
- * new function always returns a Promise; if the original function is
- * synchronous, its return value is wrapped in a Promise.
+ * Creates a debouncer with the given delay and options.  Can be used both
+ * as a method deocrator and in functional form.
  *
- * All calls made within the debounce window return the exact same Promise,
- * that resolves (or rejects) with the value returned (or error thrown) by
- * the original function when it is invoked.
+ * Debouncing works by creating a window that closes only when no calls
+ * have been made for `delay` milliseconds.  The function is invoked only
+ * once during that window, either at the start or end of the window.  The
+ * net effect is that multiple calls to the debounced function that are
+ * close together are treated as a single call.
  *
- * Options:
+ * The debounced function always returns a Promise.  All calls made within
+ * the debounce window return the exact same Promise, that resolves (or
+ * rejects) with the value returned (or error thrown) by the original
+ * function when it is invoked and awaited.
  *
- * - `edge`: 'leading' | 'trailing' (default: 'trailing') - whether to call
- *   the function at the start or end of the debounce window.
+ * In functional form, if the same debouncer is applied to multiple
+ * functions, each function is debounced independently.
  *
- * - `sequence`: 'concurrent' | 'serial' (default: 'serial') - controls
- *   when to close the debounce window after the function is called; this
- *   is only relevant when the function takes longer to compute than the
- *   debounce delay.
- *   - 'concurrent': when the debounce delay expires, the window is closed.
- *      Any calls after that will start a new debounce window and a new
- *      call to the function, returning a new promise.
- *   - 'serial': the window remains open until the function settles; any
- *     calls in the meantime return the same promise
+ * @parameters:
+ *   - `delay`:   The debounce delay in milliseconds, a function that
+ *     returns the delay.  If used as a method decorator, the function is
+ *     passed the object instance.
+ *   - `opts`:    See {@link DebounceOptions}, and {@link DebounceEdge}, {@link
+ * DebounceSequence}
+ *
+ * @examples:
+ *
+ *  ```
+ *  // Basic functional form:
+ *  const saveOnce = debounce(200)(async function saveData(...) { ... })
+ *
+ *  // With a debouncer object
+ *  const debouncer = debounce(200)
+ *  const onClickSave = debouncer(function handleSave(...) { ... })
+ *  const onClickLoad = debouncer(function handleLoad(...) { ... })
+ *
+ *  // As a method decorator
+ *  class SearchBox {
+ *    @debounce(300, { edge: 'leading' })
+ *    async onInputChange(...) { ... }
+ *  }
+ *
+ *  // With dynamic delay
+ *  class AutoSaver {
+ *     @debounce((self: AutoSaver) =>  self.getSaveDelay())
+ *     async autoSave(...) { ... }
+ *  }
+ *  ```
  */
 
-export function debounce(delay: DelaySpec, opts?: DebounceOptions): Debouncer {
+export function debounce(
+  /** The debounce delay in milliseconds, or a function that returns it.
+   * When {@link debounce} used as a method decorator, the function is passed the object
+   * instance as its first (only) parameter. */
+  delay: DelaySpec,
+  /** See {@link DebounceOptions} */
+  opts?: DebounceOptions
+): Debouncer {
   const windowMap = new WeakMap<object, DebounceWindow<any>>() // eslint-disable-line @typescript-eslint/no-explicit-any
 
   return function <F extends AnyFunction>(fn: F, _context?: ClassMethodDecoratorContext): PromisifiedFunction<F> {
