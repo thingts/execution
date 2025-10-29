@@ -13,15 +13,11 @@
     "github.com/thingts/execution": "https://github.com/thingts/execution"
   },
   "out": "docs",
-  "plugin": ["typedoc-github-theme"],
+  "plugin": ["typedoc-github-theme", "@reside-ic/typedoc-plugin-copy-doc"],
   "readme": "typedoc/readme.md",
   "theme": "typedoc-github-theme",
   "tsconfig": "tsconfig.json",
   "validation": {
     "notExported": false
-  },
-  "visibilityFilters": {
-    "protected": false,
-    "inherited": true
   }
 }

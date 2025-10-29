@@ -1,26 +1,38 @@
 # @thingts/execution
 
-Async-friendly **debounce**, **throttle**, and **serialize** function wrappers for modern TypeScript.
+[![npm version](https://img.shields.io/npm/v/@thingts/execution.svg)](https://www.npmjs.com/package/@thingts/execution)
+[![docs](https://img.shields.io/badge/docs-typedoc-blue)](https://thingts.github.io/execution/)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/thingts/execution/ci.yml)](https://github.com/thingts/execution/actions/workflows/ci.yml)
+[![GitHub License](https://img.shields.io/github/license/thingts/execution)](LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@thingts/execution)](https://bundlephobia.com/package/@thingts/execution)
 
-Both functions handle synchronous and asynchronous code transparently, always
-return a `Promise`, and guarantee that **all coalesced calls share the same
-result**.  Each returned Promise resolves (or rejects) once the wrapped
-function has executed and settled and the timing requirements have been met.
+Async-friendly debounce, throttle, and serialize function wrappers for modern TypeScript (5.2+)
+
+All are designed for **async/await** and can be used in either **functional** or **decorator** form.
 
 ---
+
+## Why?
+
+Many existing libraries contain debounce, throttle, and sequencing
+utilities, but most have legacy designs from the pre-async, pre-TypeScript
+era.  
+
+This package provides modern, ergonomic versions of these utilities that
+are fully type-safe, designed to work seamlessly with async functions, and
+support method decorator syntax.
+
 
 ## ✨ Features
 
-- 🧠 **Promise-aware:** works cleanly with async or sync functions  
-- 🔁 **Single shared Promise:** all coalesced calls share one result  
-- ⏳ **Precise async semantics:** resolve when the wrapped function settles  
-- ⚙️ **Type-safe:** modern TypeScript, fully generic  
-- ⚡ **Lightweight:** zero dependencies, <1 kB gzipped  
-- 🪶 **Flexible:** configurable invocation edge and execution sequence
+- Fully **type-safe** — preserves parameter and return types
+- Works seamlessly with **async functions and Promises**
+- Supports **method decorator syntax** (`@debounce`, `@throttle`, `@serialize`)
+- Lightweight and dependency-free
 
 ---
 
-## 📦 Installation
+## 🚀 Installation
 
 ```bash
 npm install @thingts/execution
@@ -28,164 +40,130 @@ npm install @thingts/execution
 
 ---
 
-## 🧩 API
+## 🧩 Overview
 
-### `throttle(fn, delay, options?)`
+| Utility     | Purpose                                        | Typical Use |
+|--------------|-----------------------------------------------|--------------|
+| `debounce`   | Coalesce bursts of calls into one execution   | UI events |
+| `throttle`   | Limit execution rate to once per interval.    | Scroll, resize, polling, APIs |
+| `serialize`  | Queue async calls to run one at a time.       | network or file I/O, HTML media controllers |
 
-Limits how often `fn` can run.
+Each utility wraps the original function to provide a new function that
+enforces the desired behavior, returning a Promise that resolves (or
+rejects) with the eventual result of the original function.
 
-Each call returns a **Promise** that resolves after the corresponding throttled execution has completed.  
-All calls that start within the same timing period share the same Promise.
+For debounce and throttle wrappers, multiple calls that yield a single
+execution all return the exact same promise.  Async functions whose
+executions last longer than the debounce/throttle window are handled
+naturally, with options to control the subtleties for different use cases.
 
-```ts
-import { throttle } from '@thingts/execution'
+All utilities can be used in two ways:
 
-const throttledFetch = throttle(async (url: string) => {
-  const res = await fetch(url)
-  return res.json()
-}, 1000)
+1. **Functional form**: Call the utility with options to get a wrapper
+   factory, which you then call with your target function to get the final
+   wrapped function.
 
-await Promise.all([
-  throttledFetch('/data'),
-  throttledFetch('/data'),
-]) // both resolve with the same result
-```
-
-#### Execution order (`sequence`)
-
-Controls how successive throttled runs relate to each other — especially when the wrapped function takes longer to finish than the throttle delay.
-
-| Option | Description |
-|---------|--------------|
-| `'serial'` *(default)* | Wait for the previous run to finish before starting the next. If the delay has already passed, start immediately. Ensures no overlap and maximum throughput. |
-| `'concurrent'` | Allow a new run to start once the delay has elapsed, even if the previous run is still running. Useful for event-rate throttling where overlap is harmless. |
-| `'gap'` | Wait for the previous run to finish **and** then wait at least `delay` ms before starting the next. Guarantees an idle period between completions — ideal for API rate limits. |
-
-> This option only affects behavior when `fn` may take longer to run than the throttle delay.
-
-#### Example
-
-```ts
-const t1 = throttle(fn, 1000, { sequence: 'concurrent' }) // allow overlaps
-const t2 = throttle(fn, 1000, { sequence: 'serial' })     // back-to-back
-const t3 = throttle(fn, 1000, { sequence: 'gap' })        // enforce idle gap
-```
+2. **Method decorator form**: Use the utility as a decorator on a class
+   method definition.  When calling the resulting wrapped method on
+   separate instances, they are considered to be independent (i.e., each
+   instance has its own timing/queue state).
 
 ---
 
-### `debounce(fn, delay, options?)`
+## 🔧 Usage Examples
 
-Merges rapid sequences of calls into a single logical *burst* of calls, coalesced into one execution of the wrapped function.
+These are a quick overview of how to use the functions. For complete docs and options, see the [API Reference](https://thingts.github.io/execution).
 
-Think of a **noisy button** that bounces when pressed — if pressed again within a short interval, that’s treated as the same action.  
-The debounced function ensures `fn` only runs **once per burst** of closely spaced calls.
-
-Each call returns a **Promise** that resolves after the coalesced execution has completed.  
-All calls within the same burst share the same Promise and result.
+### Debounce
 
 ```ts
 import { debounce } from '@thingts/execution'
 
-const debouncedSave = debounce(async (doc: Document) => {
-  await saveToServer(doc)
-}, 500, { edge: 'trailing', sequence: 'serial' })
+// functional form
+const save = debounce(200)(async () => {
+  console.log('Saving...')
+})
 
-debouncedSave(myDoc)
-debouncedSave(myDoc)
-// Both resolve together once the save completes
+// calls in quick succession merge into one
+save()
+save()
+save() // only one save() executes
+
+// decorator form
+class Editor {
+  @debounce(300)
+  async autoSave(): Promise<void> {
+    console.log('Auto-saving document...')
+  }
+}
 ```
 
-#### Invocation timing (`edge`)
-
-Controls **when** the wrapped function is invoked within each burst:
-
-- `'leading'` — run immediately on the first call.  
-- `'trailing'` — run after `delay` ms of quiet following the last call.
-
-In both cases, the debounce timer resets each time the function is called.
-
-#### Overlap behavior (`sequence`)
-
-Controls **whether new bursts can overlap** with an ongoing execution.  
-This option only matters when the wrapped function can take longer to settle than the debounce delay.
-
-| Option | Description |
-|---------|--------------|
-| `'serial'` *(default)* | Don’t start a new burst until the previous one finishes — ensures no overlap. |
-| `'concurrent'` | Allow a new burst while the previous is still running — useful when calls are independent or idempotent. |
-
-#### Summary
-
-- A **burst** is a group of closely spaced calls.  
-- `edge` controls *when* to invoke within the burst.  
-- `sequence` controls *whether bursts may overlap* when `fn` runs longer than the delay.  
-- All calls within the same burst share one Promise and one result.
+See the [debounce API reference](https://thingts.github.io/execution/functions/debounce.html) for full options details.
 
 ---
 
-## 🧪 Example: synchronous function
-
-Even synchronous functions are wrapped to return a Promise:
+### Throttle
 
 ```ts
 import { throttle } from '@thingts/execution'
 
-const throttled = throttle((x: number) => x * 2, 200)
+// functional form
+const tick = throttle(1000)(async () => {
+  console.log('Tick')
+})
 
-const p1 = throttled(10)
-const p2 = throttled(20)
+// called every 250ms → but runs once per second
+setInterval(tick, 250)
 
-console.log(await p1, await p2) // both print 20
+// decorator form
+class Player {
+  @throttle(500)
+  async move(direction: string): Promise<void> {
+    console.log('Moving', direction)
+  }
+}
 ```
+
+See the [throttle API reference](https://thingts.github.io/execution/functions/throttle.html) for full options details.
 
 ---
 
-## 🧰 TypeScript support
-
-Both utilities are fully typed:
+### Serialize
 
 ```ts
-function throttle<T extends (...args: any[]) => any>(
-  fn: T,
-  delay: number,
-  options?: {
-    sequence?: 'serial' | 'concurrent' | 'gap'
-  }
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+import { serialize } from '@thingts/execution'
 
-function debounce<T extends (...args: any[]) => any>(
-  fn: T,
-  delay: number,
-  options?: {
-    edge?: 'leading' | 'trailing'
-    sequence?: 'serial' | 'concurrent'
+// individual function
+const fetchData = serialize()(async (url: string) => {
+  console.log('Fetching', url)
+})
+await Promise.all([
+  fetchData('https://api.example.com/data1'),
+  fetchData('https://api.example.com/data2'),
+  fetchData('https://api.example.com/data3'),
+]) // calls are queued and run one after another
+
+// shared serialization queue via group key
+const read  = serialize({ group: 'fileIO' })(async () => readFile('data.json'))
+const write = serialize({ group: 'fileIO' })(async () => writeFile('data.json', '...'))
+await Promise.all([read(), write()]) // ...: write waits until read completes
+
+// decorator form
+class AudioEngine {
+  @serialize()
+  async playSample(id: string): Promise<void> {
+    console.log('Playing', id)
   }
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+}
 ```
 
----
+See the [serialize API
+reference](https://thingts.github.io/execution/functions/serialize.html)
+for full options details.
 
-## ⚖️ Comparison to existing libraries
+## Contributing
 
-| Library | Async-safe? | Shared-Promise semantics? | Controls overlap? | Leading / trailing? |
-|----------|-------------|---------------------------|-------------------|--------------------|
-| `lodash.debounce` | ❌ | ❌ | ❌ | ✅ |
-| `debounce-promise` | ✅ | ❌ (only last call’s promise resolves) | ❌ | ⚠️ partial |
-| `p-throttle` | ✅ | ⚠️ (queues rather than coalesces) | ⚠️ partial | ❌ |
-| **`@thingts/execution`** | ✅ | ✅ all coalesced calls share one Promise | ✅ via `sequence` | ✅ |
+Contributions are welcome!
 
----
-
-## 🧭 Usage summary
-
-| Function | Executes | Spacing rule | Calls share Promise | Typical use |
-|-----------|-----------|--------------|----------------------|--------------|
-| **throttle** | on first call per period | depends on `sequence`: `'concurrent'`, `'serial'`, or `'gap'` | ✅ | rate-limiting periodic work |
-| **debounce** | on first / last call (edge) | after last call + delay | ✅ | coalescing bursts of calls (noisy buttons, rapid typing) |
-
----
-
-## 🪪 License
-
-MIT © 2025 Ronen Barzel  
-Part of the [**ThingTS**](https://github.com/thingts) toolkit — small, type-safe utilities for modern TypeScript projects.
+As usual: fork the repo, create a feature branch, and open a
+pull request, with tests and docs for any new functionality.  Thanks!

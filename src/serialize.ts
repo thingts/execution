@@ -1,5 +1,5 @@
 import type { AnyFunction, PromisifiedFunction, PromisifyReturn } from './types'
-import { getOrInsertComputed } from './map'
+import { getOrInsertComputed } from './util'
 
 /** @internal
  *
@@ -8,44 +8,15 @@ import { getOrInsertComputed } from './map'
  */
 type SerialQueue = <T>(fn: () => T | Promise<T>) => Promise<T>
 
-/**
- * The value of the {@link SerializeOptions.group} option of {@link serialize}().
- *
- * Any non-nullish value or object may be used as a group key.
- */
+/** The value of type of the `group` option of {@link serialize}() */
 export type SerializeGroupKey = string | number | boolean | symbol | bigint | object
 
-/**
- * Options for {@link serialize}`({ ...opts })`
- */
+/** The options type of {@link serialize}() */
 export type SerializeOptions = {
-  /**
-   * Identifier for a serialization group (shared queue) to use.  If
-   * omitted, each function or method that {@link serialize}() is applied
-   * to is serialized only with itself.
-   *
-   * See {@link SerializeGroupKey}
-   */
   group?: SerializeGroupKey
 }
 
-/**
- * The result of {@link serialize}() when used in functional form.
- *
- * It's a factory that takes a function and returns a serialized wrapper of
- * it.  If the serializer was created without specifying a {@link
- * SerializeOptions.group} option, multiple functions created by that
- * serializer will be serialized independently.  If a group was specified,
- * multiple functions created by that serializer will share the same
- * serialization queue.
- *
- * @example
- *
- *   ```
- *   const s: Serializer = serialize({ group: 'net' })
- *   const fetchOnceAtATime = s(fetchFn)
- *   ```
- */
+/** The return type of {@link serialize}() */
 export type Serializer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T>
 
 /**
@@ -64,6 +35,8 @@ export type Serializer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T
  * @example
  *
  * ```
+ * import { serialize } from '@thingts/execution'
+ *
  * // Basic functional form:
  * const oneAtATime = serialize()(async function fetchData(...) { ... })
  *
@@ -90,7 +63,21 @@ export type Serializer = <T extends AnyFunction>(fn: T) => PromisifiedFunction<T
  * }
  * ```
  */
-export function serialize(opts: SerializeOptions = {}): Serializer {
+export function serialize(
+  /**
+   * ```
+   * {
+   *    group?: string | number | boolean | symbol | bigint | object
+   * }
+   * ```
+   *
+   * - `group`:  Identifier (a.k.a. key) for a shared serialization queue
+   *   to use.  If omitted, each function or method that {@link
+   *   serialize}() is applied to is serialized in its own queue.
+   *   Any non-nullish value or object may be used as a group key.
+   */
+  opts: SerializeOptions = {},
+): Serializer {
 
   return function <F extends AnyFunction<unknown>>(fn: F, _context?: ClassMethodDecoratorContext): PromisifiedFunction<F> {
 
