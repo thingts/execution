@@ -1,6 +1,6 @@
 {
   "name": "@thingts/execution",
-  "version": "1.0.6",
+  "version": "1.0.0",
   "description": "Async-friendly debounce, throttle, and serialize function wrappers for modern TypeScript",
   "keywords": [
     "async",
